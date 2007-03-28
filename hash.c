@@ -19,7 +19,8 @@
 
 
 #include <stdio.h>		/* NULL */
-#include "batman-adv.h"
+#include "hash.h"
+#include "allocate.h"
 
 
 /* clears the hash */
@@ -88,16 +89,16 @@ struct hash_it_t *hash_iterate(struct hashtable_t *hash, struct hash_it_t *iter_
 		/* sanity checks first (if our bucket got deleted in the last iteration): */
 		if (iter->last_bucket == NULL) {
 			if (iter->next_bucket != iter->bucket->next) {
-				/* we're on the first element and it got removed after the last iteration.
+				/* we're on the first element and it got removed after the last iteration. 
 				 * the bucket did not change, but the next pointer did, means the next bucket got
 				 * copied to the first place. */
 				iter->next_bucket = iter->bucket->next;
 				return(iter);
-			}
+			}	
 		} else {
 			if (iter->last_bucket->next != iter->bucket) {
 				/* we're not on the first element, and the bucket got removed after the last iteration.
-				 * the last bucket's next pointer is not pointing to our actual bucket anymore.
+				 * the last bucket's next pointer is not pointing to our actual bucket anymore. 
 				 * select the next. */
 				iter->bucket= iter->last_bucket->next;
 				if (iter->bucket!=NULL) {
@@ -215,7 +216,7 @@ void *hash_find(struct hashtable_t *hash, void *keydata) {
 }
 
 /* remove bucket (this might be used in hash_iterate() if you already found the bucket
- * you want to delete and don't need the overhead to find it again with hash_remove().
+ * you want to delete and don't need the overhead to find it again with hash_remove(). 
  * But usually, you don't want to use this function, as it fiddles with hash-internals. */
 void *hash_remove_bucket(struct hashtable_t *hash, struct element_t *bucket) {
 	struct element_t *next_bucket;
@@ -231,6 +232,9 @@ void *hash_remove_bucket(struct hashtable_t *hash, struct element_t *bucket) {
 			bucket->next= bucket->next->next;
 			debugFree(next_bucket, 1306);			/* free the next_bucket, as we copied its data into our
 						 							 * first bucket. */
+			if (bucket->next!=NULL) {				/* 3rd bucket would point on the removed bucket. fix this. */
+				bucket->next->prev= bucket;
+			}
 		}
 	} else { /* not the first entry */
 		if (bucket->next!=NULL)

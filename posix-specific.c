@@ -43,6 +43,7 @@
 #include "os.h"
 #include "batman-adv.h"
 #include "originator.h"
+#include "trans_table.h"
 
 
 
@@ -298,9 +299,9 @@ void *unix_listen( void *arg ) {
 
 				prev_list_head_unix = (struct list_head *)&unix_if.client_list;
 
-				list_for_each_safe(unix_pos, unix_pos_tmp, &unix_if.client_list) {
+				list_for_each_safe( unix_pos, unix_pos_tmp, &unix_if.client_list ) {
 
-					unix_client = list_entry(unix_pos, struct unix_client, list);
+					unix_client = list_entry( unix_pos, struct unix_client, list );
 
 					if ( FD_ISSET( unix_client->sock, &tmp_wait_sockets ) ) {
 
@@ -358,7 +359,7 @@ void *unix_listen( void *arg ) {
 
 										list_for_each_safe( debug_pos, debug_pos_tmp, (struct list_head *)debug_clients.fd_list[(int)unix_client->debug_level - '1'] ) {
 
-											debug_level_info = list_entry(debug_pos, struct debug_level_info, list);
+											debug_level_info = list_entry( debug_pos, struct debug_level_info, list );
 
 											if ( debug_level_info->fd == unix_client->sock ) {
 
@@ -422,7 +423,7 @@ void *unix_listen( void *arg ) {
 
 								list_for_each_safe( debug_pos, debug_pos_tmp, (struct list_head *)debug_clients.fd_list[(int)unix_client->debug_level - '1'] ) {
 
-									debug_level_info = list_entry(debug_pos, struct debug_level_info, list);
+									debug_level_info = list_entry( debug_pos, struct debug_level_info, list );
 
 									if ( debug_level_info->fd == unix_client->sock ) {
 
@@ -485,7 +486,7 @@ void *unix_listen( void *arg ) {
 
 			list_for_each_safe( debug_pos, debug_pos_tmp, (struct list_head *)debug_clients.fd_list[(int)unix_client->debug_level - '1'] ) {
 
-				debug_level_info = list_entry(debug_pos, struct debug_level_info, list);
+				debug_level_info = list_entry( debug_pos, struct debug_level_info, list );
 
 				if ( debug_level_info->fd == unix_client->sock ) {
 
@@ -1392,6 +1393,7 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 	struct bcast_packet *bcast_packet;
 	int8_t res;
 	unsigned char *payload_ptr;
+	unsigned char *dhost= NULL;
 	fd_set tmp_wait_set;
 
 
@@ -1426,6 +1428,7 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 		/* save data from kernel into a buffer but spare space for the header information */
 		while ( ( *pay_buff_len = read( tap_sock, payload_ptr, packet_buff_len - 1 - sizeof(struct bcast_packet) ) ) > 0 ) {
 
+			transtable_add( ((struct ether_header *)payload_ptr)->ether_shost, ((struct batman_if *)if_list.next)->hw_addr );
 			/* ethernet packet should be broadcasted */
 			if ( is_broadcast_address( ((struct ether_header *)payload_ptr)->ether_dhost ) ) {
 
@@ -1454,7 +1457,10 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 			} else {
 
 				/* get routing information */
-				orig_node = find_orig_node( ((struct ether_header *)payload_ptr)->ether_dhost );
+				dhost = transtable_search( ((struct ether_header *)payload_ptr)->ether_dhost );
+				if ( dhost == NULL )
+					dhost = ((struct ether_header *)payload_ptr)->ether_dhost;
+				orig_node = find_orig_node( dhost );
 
 				if ( ( orig_node != NULL ) && ( orig_node->batman_if != NULL ) && ( orig_node->router != NULL ) ) {
 
@@ -1464,12 +1470,13 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 					unicast_packet->packet_type = BAT_UNICAST;
 					/* set unicast ttl */
 					unicast_packet->ttl = TTL;
+					memcpy( unicast_packet->orig, ((struct batman_if *)if_list.next)->hw_addr, 6 );
 
 					if ( send_packet( (unsigned char *)unicast_packet, *pay_buff_len + sizeof(struct unicast_packet), orig_node->batman_if->hw_addr, orig_node->router->addr, orig_node->batman_if->raw_sock ) < 0 )
 						return -1;
 
 				} else {
-
+					debug_output(4, "found no destination for the MAC %s\n", addr_to_string( dhost ));
 					/*unsigned char *pay_buff = (unsigned char *)packet_buff + sizeof(struct batman_packet);
 					printf( "not found: %s\n", addr_to_string( ((struct ether_header *)payload_ptr)->ether_dhost ) ); */
 
@@ -1534,9 +1541,14 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 					if ( ( packet_buff[0] == BAT_UNICAST ) && ( *pay_buff_len < sizeof(struct unicast_packet) ) )
 						continue;
 
+					if ( packet_buff[0] == BAT_UNICAST ) {
+						transtable_add( ((struct ether_header *)(packet_buff + sizeof(struct unicast_packet)))->ether_shost, ((struct unicast_packet *)packet_buff)->orig );
+						dhost = transtable_search( ((struct ether_header *)(packet_buff + sizeof(struct unicast_packet)))->ether_dhost);
+						if (dhost == NULL) dhost = ((struct ether_header *)(packet_buff + sizeof(struct unicast_packet)))->ether_dhost;
+					}
 
 					/* packet for me */
-					if ( isMyMac( ( packet_buff[0] == BAT_ICMP ? ((struct icmp_packet *)packet_buff)->dst : ((struct ether_header *)(packet_buff + sizeof(struct unicast_packet)))->ether_dhost ) ) == 1 ) {
+					if ( isMyMac( ( packet_buff[0] == BAT_ICMP ? ((struct icmp_packet *)packet_buff)->dst : dhost ) ) == 1 ) {
 
 						if ( packet_buff[0] == BAT_UNICAST ) {
 
@@ -1585,7 +1597,13 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 						/* TTL exceeded */
 						if ( ( ( packet_buff[0] == BAT_ICMP ) && ( ((struct icmp_packet *)packet_buff)->ttl < 2 ) ) || ( ( packet_buff[0] == BAT_UNICAST ) && ( ((struct unicast_packet *)packet_buff)->ttl < 2 ) ) ) {
 
-							debug_output( 0, "Error - can't send packet from %s to %s: ttl exceeded\n", addr_to_string( ( packet_buff[0] == BAT_ICMP ? ((struct icmp_packet *)packet_buff)->orig : ((struct ether_header *)(packet_buff + sizeof(struct unicast_packet)))->ether_shost ) ), addr_to_string( ( packet_buff[0] == BAT_ICMP ? ((struct icmp_packet *)packet_buff)->dst : ((struct ether_header *)(packet_buff + sizeof(struct unicast_packet)))->ether_dhost ) ) );
+							debug_output( 0, "Error - can't send packet from %s to %s: ttl exceeded\n", 
+									addr_to_string( ( packet_buff[0] == BAT_ICMP 
+											? ((struct icmp_packet *)packet_buff)->orig 
+											: ((struct ether_header *)(packet_buff + sizeof(struct unicast_packet)))->ether_shost ) ), 
+									addr_to_string( ( packet_buff[0] == BAT_ICMP 
+											? ((struct icmp_packet *)packet_buff)->dst 
+											: ((struct ether_header *)(packet_buff + sizeof(struct unicast_packet)))->ether_dhost ) ) );
 
 							/* send TTL exceed if packet is an echo request (traceroute) */
 							if ( ( packet_buff[0] == BAT_ICMP ) && ( ((struct icmp_packet *)packet_buff)->msg_type == ECHO_REQUEST ) ) {
@@ -1619,7 +1637,7 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 						}
 
 						/* get routing information */
-						orig_node = find_orig_node( ( packet_buff[0] == BAT_ICMP ? ((struct icmp_packet *)packet_buff)->dst : ((struct ether_header *)(packet_buff + sizeof(struct unicast_packet)))->ether_dhost ) );
+						orig_node = find_orig_node( packet_buff[0] == BAT_ICMP ? ((struct icmp_packet *)packet_buff)->dst : dhost );
 
 						if ( ( orig_node != NULL ) && ( orig_node->batman_if != NULL ) && ( orig_node->router != NULL ) ) {
 
@@ -1663,6 +1681,7 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 					if ( isMyMac( ether_header.ether_shost ) == 1 )
 						continue;
 
+					transtable_add( ((struct ether_header *)(packet_buff + sizeof(struct bcast_packet)))->ether_shost, ((struct bcast_packet *)packet_buff)->orig );
 					orig_node = find_orig_node( ((struct bcast_packet *)packet_buff)->orig );
 
 					if ( orig_node != NULL ) {
@@ -2097,7 +2116,7 @@ void cleanup() {
 
 			list_for_each_safe( debug_pos, debug_pos_tmp, (struct list_head *)debug_clients.fd_list[i] ) {
 
-				debug_level_info = list_entry(debug_pos, struct debug_level_info, list);
+				debug_level_info = list_entry( debug_pos, struct debug_level_info, list );
 
 				list_del( (struct list_head *)debug_clients.fd_list[i], debug_pos, (struct list_head_first *)debug_clients.fd_list[i] );
 				debugFree( debug_pos, 1207 );

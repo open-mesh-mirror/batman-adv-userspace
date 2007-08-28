@@ -28,6 +28,7 @@
 #include "batman-adv.h"
 #include "originator.h"
 #include "schedule.h"
+#include "trans_table.h"
 
 
 
@@ -523,6 +524,9 @@ int8_t batman() {
 	if ( NULL == ( orig_hash = hash_new( 128, compare_orig, choose_orig ) ) )
 		return(-1);
 
+	if ( -1 == transtable_init())
+		return(-1);
+
 	while ( !is_aborted() ) {
 
 		debug_output( 4, " \n \n" );
@@ -546,7 +550,16 @@ int8_t batman() {
 			has_directlink_flag = ((struct batman_packet *)&in)->flags & DIRECTLINK ? 1 : 0;
 			has_version = ((struct batman_packet *)&in)->version;
 
-			debug_output( 4, "Received BATMAN packet via NB: %s ,IF: %s %s (from OG: %s, seqno %d, TTL %d, V %d, UDF %d, IDF %d) \n", addr_to_string( neigh ), if_incoming->dev, addr_to_string( if_incoming->hw_addr ), addr_to_string( ((struct batman_packet *)&in)->orig ), ((struct batman_packet *)&in)->seqno, ((struct batman_packet *)&in)->ttl, has_version, has_unidirectional_flag, has_directlink_flag );
+			debug_output( 4, "Received BATMAN packet via NB: %s ,IF: %s %s (from OG: %s, seqno %d, TTL %d, V %d, UDF %d, IDF %d) \n", 
+					addr_to_string( neigh ), 
+					if_incoming->dev, 
+					addr_to_string( if_incoming->hw_addr ), 
+					addr_to_string( ((struct batman_packet *)&in)->orig ), 
+					((struct batman_packet *)&in)->seqno, 
+					((struct batman_packet *)&in)->ttl, 
+					has_version, 
+					has_unidirectional_flag, 
+					has_directlink_flag );
 
 			list_for_each( if_pos, &if_list ) {
 
@@ -583,7 +596,11 @@ int8_t batman() {
 
 				orig_neigh_node = get_orig_node( neigh );
 
-				debug_output( 4, "received my own OGM via NB lastTxIfSeqno: %d, currRxSeqno: %d, prevRxSeqno: %d, currRxSeqno-prevRxSeqno %d \n", ( if_incoming->out.seqno - 2 ), ((struct batman_packet *)&in)->seqno, orig_neigh_node->bidirect_link[if_incoming->if_num], ((struct batman_packet *)&in)->seqno - orig_neigh_node->bidirect_link[if_incoming->if_num] );
+				debug_output( 4, "received my own OGM via NB lastTxIfSeqno: %d, currRxSeqno: %d, prevRxSeqno: %d, currRxSeqno-prevRxSeqno %d \n", 
+						( if_incoming->out.seqno - 2 ), 
+						((struct batman_packet *)&in)->seqno, 
+						orig_neigh_node->bidirect_link[if_incoming->if_num], 
+						((struct batman_packet *)&in)->seqno - orig_neigh_node->bidirect_link[if_incoming->if_num] );
 
 				/* neighbour has to indicate direct link and it has to come via the corresponding interface */
 				/* if received seqno equals last send seqno save new seqno for bidirectional check */

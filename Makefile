@@ -45,8 +45,8 @@ endif
 
 LOG_BRANCH= trunk/batman-advanced
 
-LINUX_SRC_C= batman-adv.c originator.c schedule.c list-batman.c posix-specific.c posix.c allocate.c bitarray.c hash.c $(OS_C)
-LINUX_SRC_H= batman-adv.h originator.h schedule.h list-batman.h os.h allocate.h bitarray.h hash.h packet.h
+LINUX_SRC_C= batman-adv.c originator.c schedule.c list-batman.c posix-specific.c posix.c allocate.c bitarray.c hash.c trans_table.c $(OS_C)
+LINUX_SRC_H= batman-adv.h originator.h schedule.h list-batman.h os.h allocate.h bitarray.h hash.h packet.h trans_table.h
 
 BINARY_NAME=	batmand-adv
 SOURCE_VERSION_HEADER= batman-adv.h

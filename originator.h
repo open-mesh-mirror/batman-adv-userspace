@@ -18,6 +18,8 @@
  */
 
 
+#include <stdint.h>		/* intXX_t types */
+#include "batman-adv.h"
 
 int compare_orig( void *data1, void *data2 );
 int choose_orig( void *data, int32_t size );

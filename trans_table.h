@@ -23,6 +23,7 @@ struct trans_element_t {
 };
 
 int 			 transtable_init();
+int 			 transtable_quit();
 int 			 transtable_add( unsigned char *mac, unsigned char *batman_mac);
 unsigned char 	*transtable_search( unsigned char *mac);
 

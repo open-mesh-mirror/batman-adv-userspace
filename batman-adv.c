@@ -760,6 +760,7 @@ int8_t batman() {
 	purge_orig( get_time() + ( 5 * PURGE_TIMEOUT ) + originator_interval );
 
 	hash_destroy( orig_hash );
+	transtable_quit();
 
 
 	list_for_each_safe( forw_pos, forw_pos_tmp, &forw_list ) {

@@ -1392,6 +1392,7 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 	struct unicast_packet *unicast_packet;
 	struct bcast_packet *bcast_packet;
 	int8_t res;
+	int i;
 	unsigned char *payload_ptr;
 	unsigned char *dhost= NULL;
 	fd_set tmp_wait_set;
@@ -1426,7 +1427,9 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 		payload_ptr = packet_buff + sizeof(struct bcast_packet);
 
 		/* save data from kernel into a buffer but spare space for the header information */
-		while ( ( *pay_buff_len = read( tap_sock, payload_ptr, packet_buff_len - 1 - sizeof(struct bcast_packet) ) ) > 0 ) {
+		for (i=0; i< 10; i++) {
+		errno=EWOULDBLOCK;
+		if ( ( *pay_buff_len = read( tap_sock, payload_ptr, packet_buff_len - 1 - sizeof(struct bcast_packet) ) ) > 0 ) {
 
 			transtable_add( ((struct ether_header *)payload_ptr)->ether_shost, ((struct batman_if *)if_list.next)->hw_addr );
 			/* ethernet packet should be broadcasted */
@@ -1484,6 +1487,7 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 
 			}
 
+		} else break;
 		}
 
 		if ( errno != EWOULDBLOCK ) {
@@ -1501,8 +1505,9 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 		batman_if = list_entry( if_pos, struct batman_if, list );
 
 		if ( FD_ISSET( batman_if->raw_sock, &tmp_wait_set ) ) {
+			for (i=0; i<10; i++) {
 
-			while ( ( *pay_buff_len = rawsock_read( batman_if->raw_sock, &ether_header, packet_buff, packet_buff_len - 1 ) ) > -1 ) {
+			if ( ( *pay_buff_len = rawsock_read( batman_if->raw_sock, &ether_header, packet_buff, packet_buff_len - 1 ) ) > -1 ) {
 
 				/* drop packet if it has no batman packet type field */
 				if ( *pay_buff_len < 1 )
@@ -1761,8 +1766,9 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 				debug_output( 0, "Error - couldn't read data from raw socket(%s): %s\n", batman_if->dev, strerror(errno) );
 				return -1;
 
-			}
+			} else break;
 
+		}
 		}
 
 	}

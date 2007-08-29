@@ -25,6 +25,7 @@
 #include "originator.h"		/* compare_orig(), choose_orig() */
 #include "os.h"				/* debug_output(), addr_to_string() */
 #include <string.h>			/* memcpy() */
+#include <stdlib.h>			/* malloc(), free() */
 
 struct hashtable_t *trans_hash;
 unsigned char bcast_addr[6]= { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
@@ -33,6 +34,11 @@ unsigned char bcast_addr[6]= { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
 int transtable_init() {
 	trans_hash= hash_new( 4096, compare_orig, choose_orig);
 	return ( (trans_hash == NULL)?-1:0 );
+}
+
+int transtable_quit() {
+	hash_delete(trans_hash, free);
+	return (0);
 }
 
 /* check if a payload MAC-address is already in the hash-table and add it if it's new */
@@ -69,3 +75,4 @@ unsigned char *transtable_search( unsigned char *mac) {
 	else 					return( NULL );
 
 }
+

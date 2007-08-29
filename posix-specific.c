@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 BATMAN contributors:
- * Thomas Lopatic, Marek Lindner
+ * Thomas Lopatic, Marek Lindner, Simon Wunderlich
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of version 2 of the GNU General Public
  * License as published by the Free Software Foundation.
@@ -1509,7 +1509,8 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 					continue;
 
 				/* batman packet */
-				if ( packet_buff[0] == BAT_PACKET ) {
+				switch (packet_buff[0]) {
+				case BAT_PACKET:
 
 					/* drop packet if it has no batman packet payload */
 					if ( *pay_buff_len < sizeof(struct batman_packet) )
@@ -1522,8 +1523,67 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 
 					return 1;
 
-				/* batman icmp packet or unicast packet */
-				} else if ( ( packet_buff[0] == BAT_ICMP ) || ( packet_buff[0] == BAT_UNICAST ) ) {
+				/* unicast packet */
+				case BAT_UNICAST:
+					/* packet with unicast indication but broadcast recipient */
+					if ( memcmp( &ether_header.ether_dhost, broadcastAddr, ETH_ALEN ) == 0 )
+						continue;
+
+					/* packet with broadcast sender address */
+					if ( memcmp( &ether_header.ether_shost, broadcastAddr, ETH_ALEN ) == 0 )
+						continue;
+
+					/* drop packet if it has not neccessary minimum size - 1 byte ttl, 1 byte payload */
+					if ( *pay_buff_len < sizeof(struct unicast_packet) )
+						continue;
+
+					transtable_add( ((struct ether_header *)(packet_buff + sizeof(struct unicast_packet)))->ether_shost, ((struct unicast_packet *)packet_buff)->orig );
+					dhost = transtable_search( ((struct ether_header *)(packet_buff + sizeof(struct unicast_packet)))->ether_dhost);
+					if (dhost == NULL) dhost = ((struct ether_header *)(packet_buff + sizeof(struct unicast_packet)))->ether_dhost;
+
+					/* packet for me */
+					if ( isMyMac( dhost ) == 1 ) {
+
+						tap_write( tap_sock, packet_buff + sizeof(struct unicast_packet), *pay_buff_len - sizeof(struct unicast_packet) );
+
+
+					/* route it */
+					} else {
+
+						/* TTL exceeded */
+						if (  ((struct unicast_packet *)packet_buff)->ttl < 2 ) {
+
+							debug_output( 0, "Error - can't send packet from %s to %s: ttl exceeded\n", 
+									addr_to_string( ((struct ether_header *)(packet_buff + sizeof(struct unicast_packet)))->ether_shost ), 
+									addr_to_string( ((struct ether_header *)(packet_buff + sizeof(struct unicast_packet)))->ether_dhost ));
+
+							continue;
+
+						}
+
+						/* get routing information */
+						orig_node = find_orig_node( dhost );
+
+						if ( ( orig_node != NULL ) && ( orig_node->batman_if != NULL ) && ( orig_node->router != NULL ) ) {
+
+							memcpy( ether_header.ether_dhost, orig_node->router->addr, ETH_ALEN );
+							memcpy( ether_header.ether_shost, orig_node->batman_if->hw_addr, ETH_ALEN );
+
+							/* decrement ttl */
+							((struct unicast_packet *)packet_buff)->ttl--;
+
+							if ( rawsock_write( orig_node->batman_if->raw_sock, &ether_header, packet_buff, *pay_buff_len ) < 0 ) {
+
+								debug_output( 0, "Error - can't send data through raw socket: %s\n", strerror(errno) );
+								return -1;
+
+							}
+
+						}
+
+					}
+				/* batman icmp packet */
+				case BAT_ICMP:
 
 					/* packet with unicast indication but broadcast recipient */
 					if ( memcmp( &ether_header.ether_dhost, broadcastAddr, ETH_ALEN ) == 0 )
@@ -1534,27 +1594,11 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 						continue;
 
 					/* drop packet if it has not neccessary minimum size */
-					if ( ( packet_buff[0] == BAT_ICMP ) && ( *pay_buff_len < sizeof(struct icmp_packet) ) )
+					if ( *pay_buff_len < sizeof(struct icmp_packet) ) 
 						continue;
-
-					/* drop packet if it has not neccessary minimum size - 1 byte ttl, 1 byte payload */
-					if ( ( packet_buff[0] == BAT_UNICAST ) && ( *pay_buff_len < sizeof(struct unicast_packet) ) )
-						continue;
-
-					if ( packet_buff[0] == BAT_UNICAST ) {
-						transtable_add( ((struct ether_header *)(packet_buff + sizeof(struct unicast_packet)))->ether_shost, ((struct unicast_packet *)packet_buff)->orig );
-						dhost = transtable_search( ((struct ether_header *)(packet_buff + sizeof(struct unicast_packet)))->ether_dhost);
-						if (dhost == NULL) dhost = ((struct ether_header *)(packet_buff + sizeof(struct unicast_packet)))->ether_dhost;
-					}
 
 					/* packet for me */
-					if ( isMyMac( ( packet_buff[0] == BAT_ICMP ? ((struct icmp_packet *)packet_buff)->dst : dhost ) ) == 1 ) {
-
-						if ( packet_buff[0] == BAT_UNICAST ) {
-
-							tap_write( tap_sock, packet_buff + sizeof(struct unicast_packet), *pay_buff_len - sizeof(struct unicast_packet) );
-
-						} else {
+					if ( isMyMac( ((struct icmp_packet *)packet_buff)->dst ) == 1 ) {
 
 							/* answer ping request (ping) */
 							if ( ((struct icmp_packet *)packet_buff)->msg_type == ECHO_REQUEST ) {
@@ -1578,8 +1622,8 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 										return -1;
 
 									}
-
 								}
+
 
 							} else {
 
@@ -1589,13 +1633,11 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 
 							}
 
-						}
-
 					/* route it */
 					} else {
 
 						/* TTL exceeded */
-						if ( ( ( packet_buff[0] == BAT_ICMP ) && ( ((struct icmp_packet *)packet_buff)->ttl < 2 ) ) || ( ( packet_buff[0] == BAT_UNICAST ) && ( ((struct unicast_packet *)packet_buff)->ttl < 2 ) ) ) {
+						if ( ((struct icmp_packet *)packet_buff)->ttl < 2 )   {
 
 							debug_output( 0, "Error - can't send packet from %s to %s: ttl exceeded\n", 
 									addr_to_string( ( packet_buff[0] == BAT_ICMP 
@@ -1606,7 +1648,7 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 											: ((struct ether_header *)(packet_buff + sizeof(struct unicast_packet)))->ether_dhost ) ) );
 
 							/* send TTL exceed if packet is an echo request (traceroute) */
-							if ( ( packet_buff[0] == BAT_ICMP ) && ( ((struct icmp_packet *)packet_buff)->msg_type == ECHO_REQUEST ) ) {
+							if (((struct icmp_packet *)packet_buff)->msg_type == ECHO_REQUEST ) {
 
 								/* get routing information */
 								orig_node = find_orig_node( ((struct icmp_packet *)packet_buff)->orig );
@@ -1637,7 +1679,7 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 						}
 
 						/* get routing information */
-						orig_node = find_orig_node( packet_buff[0] == BAT_ICMP ? ((struct icmp_packet *)packet_buff)->dst : dhost );
+						orig_node = find_orig_node( ((struct icmp_packet *)packet_buff)->dst );
 
 						if ( ( orig_node != NULL ) && ( orig_node->batman_if != NULL ) && ( orig_node->router != NULL ) ) {
 
@@ -1645,11 +1687,7 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 							memcpy( ether_header.ether_shost, orig_node->batman_if->hw_addr, ETH_ALEN );
 
 							/* decrement ttl */
-							if ( packet_buff[0] == BAT_ICMP ) {
-								((struct icmp_packet *)packet_buff)->ttl--;
-							} else {
-								((struct unicast_packet *)packet_buff)->ttl--;
-							}
+							((struct icmp_packet *)packet_buff)->ttl--;
 
 							if ( rawsock_write( orig_node->batman_if->raw_sock, &ether_header, packet_buff, *pay_buff_len ) < 0 ) {
 
@@ -1661,9 +1699,8 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 						}
 
 					}
-
 				/* broadcast */
-				} else if ( packet_buff[0] == BAT_BCAST ) {
+				case BAT_BCAST:
 
 					/* packet with broadcast indication but not broadcast recipient */
 					if ( memcmp( &ether_header.ether_dhost, broadcastAddr, ETH_ALEN ) != 0 )
@@ -1713,6 +1750,7 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 						}
 
 					}
+					break;
 
 				}
 

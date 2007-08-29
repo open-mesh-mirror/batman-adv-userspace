@@ -1433,7 +1433,7 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 
 			transtable_add( ((struct ether_header *)payload_ptr)->ether_shost, ((struct batman_if *)if_list.next)->hw_addr );
 			dhost = transtable_search( ((struct ether_header *)payload_ptr)->ether_dhost );
-#ifdef BROADCAST_UNKNOWN_SOURCE
+#ifdef BROADCAST_UNKNOWN_DEST
 			if ( dhost == NULL )
 				dhost = broadcastAddr;
 

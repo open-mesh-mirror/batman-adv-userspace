@@ -1427,7 +1427,7 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 		payload_ptr = packet_buff + sizeof(struct bcast_packet);
 
 		/* save data from kernel into a buffer but spare space for the header information */
-		for (i=0; i< 10; i++) {
+		for (i=0; i< PACKETS_PER_CYCLE; i++) {
 		errno=EWOULDBLOCK;
 		if ( ( *pay_buff_len = read( tap_sock, payload_ptr, packet_buff_len - 1 - sizeof(struct bcast_packet) ) ) > 0 ) {
 
@@ -1505,8 +1505,9 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 		batman_if = list_entry( if_pos, struct batman_if, list );
 
 		if ( FD_ISSET( batman_if->raw_sock, &tmp_wait_set ) ) {
-			for (i=0; i<10; i++) {
+			for (i=0; i<PACKETS_PER_CYCLE; i++) {
 
+//			while ( ( *pay_buff_len = rawsock_read( batman_if->raw_sock, &ether_header, packet_buff, packet_buff_len - 1 ) ) > -1 ) {
 			if ( ( *pay_buff_len = rawsock_read( batman_if->raw_sock, &ether_header, packet_buff, packet_buff_len - 1 ) ) > -1 ) {
 
 				/* drop packet if it has no batman packet type field */
@@ -1587,6 +1588,7 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 						}
 
 					}
+				break;
 				/* batman icmp packet */
 				case BAT_ICMP:
 
@@ -1704,6 +1706,7 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 						}
 
 					}
+					break;
 				/* broadcast */
 				case BAT_BCAST:
 
@@ -1759,14 +1762,15 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 
 				}
 
+			} else {
+
+				if ( errno != EWOULDBLOCK ) {
+
+					debug_output( 0, "Error - couldn't read data from raw socket(%s): %s\n", batman_if->dev, strerror(errno) );
+					return -1;
+		
+				} else break;
 			}
-
-			if ( errno != EWOULDBLOCK ) {
-
-				debug_output( 0, "Error - couldn't read data from raw socket(%s): %s\n", batman_if->dev, strerror(errno) );
-				return -1;
-
-			} else break;
 
 		}
 		}

@@ -73,11 +73,20 @@
 #define BIDIRECT_TIMEOUT 2
 #define PURGE_TIMEOUT 200000  /* purge originators after time in ms if no valid packet comes in -> TODO: check influence on SEQ_RANGE */
 #define SEQ_RANGE 128         /* sliding packet range of received originator messages in squence numbers (should be a multiple of our word size) */
-#define PACKETS_PER_CYCLE 1  /* this seems to be a reasonable value (i've tested for different setups) */
+#define PACKETS_PER_CYCLE 10  /* this seems to be a reasonable value (i've tested for different setups) */
 							  /* how many packets to read from the virtual interfaces, maximum. 
 							   * low value = high throughput, high CPU-load
 							   * big value = low throughput, low CPU-load
 							   * infinity = as it was before. */
+#define BROADCAST_UNKNOWN_DEST	1
+							  /* if a packet with unknown destination should be sent, that means the port
+							   * can not be looked up in the translation table, a switch usually 
+							   * broadcasts the packet. This should happen very rarely, as the switch
+							   * will learn source-MACs with every sent frame, but it is intended as
+							   * fallback solution. 
+							   * Because it is a broadcast, and therefore expensive, it might be better 
+							   * to turn it off. A client must do ARP-Requests then or wait for the 
+							   * destination to send/broadcast something. */
 
 
 

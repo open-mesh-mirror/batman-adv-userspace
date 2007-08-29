@@ -1432,14 +1432,24 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 		if ( ( *pay_buff_len = read( tap_sock, payload_ptr, packet_buff_len - 1 - sizeof(struct bcast_packet) ) ) > 0 ) {
 
 			transtable_add( ((struct ether_header *)payload_ptr)->ether_shost, ((struct batman_if *)if_list.next)->hw_addr );
+			dhost = transtable_search( ((struct ether_header *)payload_ptr)->ether_dhost );
+#ifdef BROADCAST_UNKNOWN_SOURCE
+			if ( dhost == NULL )
+				dhost = broadcastAddr;
+
+#else
+			if ( dhost == NULL )
+				dhost = ((struct ether_header *)payload_ptr)->ether_dhost;
+#endif
+
 			/* ethernet packet should be broadcasted */
-			if ( is_broadcast_address( ((struct ether_header *)payload_ptr)->ether_dhost ) ) {
+			if ( is_broadcast_address( dhost ) ) {
 
 				bcast_packet = (struct bcast_packet *)packet_buff;
 
 				/* batman packet type: broadcast */
 				bcast_packet->packet_type = BAT_BCAST;
-				/*hw address of first interface is the orig mac because only this mac is known throughout the mesh */
+				/* hw address of first interface is the orig mac because only this mac is known throughout the mesh */
 				memcpy( bcast_packet->orig, ((struct batman_if *)if_list.next)->hw_addr, 6 );
 				/* set broadcast sequence number */
 				bcast_packet->seqno = ((struct batman_if *)if_list.next)->bcast_seqno;
@@ -1460,20 +1470,19 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 			} else {
 
 				/* get routing information */
-				dhost = transtable_search( ((struct ether_header *)payload_ptr)->ether_dhost );
-				if ( dhost == NULL )
-					dhost = ((struct ether_header *)payload_ptr)->ether_dhost;
 				orig_node = find_orig_node( dhost );
 
 				if ( ( orig_node != NULL ) && ( orig_node->batman_if != NULL ) && ( orig_node->router != NULL ) ) {
 
 					unicast_packet = (struct unicast_packet *)(payload_ptr - sizeof(struct unicast_packet) );
-
 					/* batman packet type: unicast */
 					unicast_packet->packet_type = BAT_UNICAST;
 					/* set unicast ttl */
 					unicast_packet->ttl = TTL;
 					memcpy( unicast_packet->orig, ((struct batman_if *)if_list.next)->hw_addr, 6 );
+					/* copy the destination for faster routing */
+					memcpy( unicast_packet->dest, dhost, 6 );
+
 
 					if ( send_packet( (unsigned char *)unicast_packet, *pay_buff_len + sizeof(struct unicast_packet), orig_node->batman_if->hw_addr, orig_node->router->addr, orig_node->batman_if->raw_sock ) < 0 )
 						return -1;
@@ -1507,7 +1516,6 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 		if ( FD_ISSET( batman_if->raw_sock, &tmp_wait_set ) ) {
 			for (i=0; i<PACKETS_PER_CYCLE; i++) {
 
-//			while ( ( *pay_buff_len = rawsock_read( batman_if->raw_sock, &ether_header, packet_buff, packet_buff_len - 1 ) ) > -1 ) {
 			if ( ( *pay_buff_len = rawsock_read( batman_if->raw_sock, &ether_header, packet_buff, packet_buff_len - 1 ) ) > -1 ) {
 
 				/* drop packet if it has no batman packet type field */
@@ -1528,7 +1536,6 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 					memcpy( neigh, ether_header.ether_shost, ETH_ALEN );
 
 					return 1;
-
 				/* unicast packet */
 				case BAT_UNICAST:
 					/* packet with unicast indication but broadcast recipient */
@@ -1544,8 +1551,12 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 						continue;
 
 					transtable_add( ((struct ether_header *)(packet_buff + sizeof(struct unicast_packet)))->ether_shost, ((struct unicast_packet *)packet_buff)->orig );
+					dhost = ((struct unicast_packet *)packet_buff)->dest;
+/*
 					dhost = transtable_search( ((struct ether_header *)(packet_buff + sizeof(struct unicast_packet)))->ether_dhost);
-					if (dhost == NULL) dhost = ((struct ether_header *)(packet_buff + sizeof(struct unicast_packet)))->ether_dhost;
+					if (dhost == NULL) 
+						dhost = ((struct ether_header *)(packet_buff + sizeof(struct unicast_packet)))->ether_dhost;
+						*/
 
 					/* packet for me */
 					if ( isMyMac( dhost ) == 1 ) {
@@ -1588,7 +1599,8 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 						}
 
 					}
-				break;
+					break;
+
 				/* batman icmp packet */
 				case BAT_ICMP:
 
@@ -1707,12 +1719,14 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 
 					}
 					break;
+
 				/* broadcast */
 				case BAT_BCAST:
-
+#ifndef BROADCAST_UNKNOWN_DEST
 					/* packet with broadcast indication but not broadcast recipient */
 					if ( memcmp( &ether_header.ether_dhost, broadcastAddr, ETH_ALEN ) != 0 )
 						continue;
+#endif
 
 					/* packet with broadcast sender address */
 					if ( memcmp( &ether_header.ether_shost, broadcastAddr, ETH_ALEN ) == 0 )

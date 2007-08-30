@@ -1424,12 +1424,12 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 
 	if ( FD_ISSET( tap_sock, &tmp_wait_set ) ) {
 
-		payload_ptr = packet_buff + sizeof(struct bcast_packet);
+		payload_ptr = packet_buff + BATMAN_MAXPACKETSIZE;
 
 		/* save data from kernel into a buffer but spare space for the header information */
 		for (i=0; i< PACKETS_PER_CYCLE; i++) {
 		errno=EWOULDBLOCK;
-		if ( ( *pay_buff_len = read( tap_sock, payload_ptr, packet_buff_len - 1 - sizeof(struct bcast_packet) ) ) > 0 ) {
+		if ( ( *pay_buff_len = read( tap_sock, payload_ptr, packet_buff_len - 1 - BATMAN_MAXPACKETSIZE ) ) > 0 ) {
 
 			transtable_add( ((struct ether_header *)payload_ptr)->ether_shost, ((struct batman_if *)if_list.next)->hw_addr );
 			dhost = transtable_search( ((struct ether_header *)payload_ptr)->ether_dhost );
@@ -1445,7 +1445,7 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 			/* ethernet packet should be broadcasted */
 			if ( is_broadcast_address( dhost ) ) {
 
-				bcast_packet = (struct bcast_packet *)packet_buff;
+				bcast_packet = (struct bcast_packet *)(payload_ptr - sizeof(struct bcast_packet));
 
 				/* batman packet type: broadcast */
 				bcast_packet->packet_type = BAT_BCAST;
@@ -1461,7 +1461,7 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 
 					batman_if = list_entry(if_pos, struct batman_if, list);
 
-					if ( send_packet( packet_buff, *pay_buff_len + sizeof(struct bcast_packet), batman_if->hw_addr, broadcastAddr, batman_if->raw_sock ) < 0 )
+					if ( send_packet( (unsigned char *)bcast_packet, *pay_buff_len + sizeof(struct bcast_packet), batman_if->hw_addr, broadcastAddr, batman_if->raw_sock ) < 0 )
 						return -1;
 
 				}

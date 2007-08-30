@@ -87,6 +87,9 @@
 							   * Because it is a broadcast, and therefore expensive, it might be better 
 							   * to turn it off. A client must do ARP-Requests then or wait for the 
 							   * destination to send/broadcast something. */
+#define BATMAN_MAXPACKETSIZE	(sizeof(struct unicast_packet)>sizeof(struct bcast_packet)?sizeof(struct unicast_packet):sizeof(struct bcast_packet))
+								/* maximum size of a packet which carries payload. This should be calculated by the compiler.*/
+#define BATMAN_MAXFRAMESIZE		(sizeof(struct ether_header) + BATMAN_MAXPACKETSIZE)	/* size of an ethernet frame. */
 
 
 

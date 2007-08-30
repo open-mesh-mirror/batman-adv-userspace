@@ -1452,7 +1452,7 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 				/* hw address of first interface is the orig mac because only this mac is known throughout the mesh */
 				memcpy( bcast_packet->orig, ((struct batman_if *)if_list.next)->hw_addr, 6 );
 				/* set broadcast sequence number */
-				bcast_packet->seqno = ((struct batman_if *)if_list.next)->bcast_seqno;
+				bcast_packet->seqno = htons( ((struct batman_if *)if_list.next)->bcast_seqno );
 
 				((struct batman_if *)if_list.next)->bcast_seqno++;
 
@@ -1746,11 +1746,12 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 					if ( orig_node != NULL ) {
 
 						/* check flood history */
-						if ( get_bit_status( orig_node->seq_bits, orig_node->last_bcast_seqno, htons( ((struct bcast_packet *)packet_buff)->seqno ) ) )
+						if ( get_bit_status( orig_node->seq_bits, orig_node->last_bcast_seqno, ntohs( ((struct bcast_packet *)packet_buff)->seqno ) ) )
 							continue;
 
 						/* mark broadcast in flood history */
-						bit_get_packet( orig_node->seq_bits, htons( ((struct bcast_packet *)packet_buff)->seqno ) - orig_node->last_bcast_seqno, 1 );
+						if (bit_get_packet( orig_node->seq_bits, ntohs( ((struct bcast_packet *)packet_buff)->seqno ) - orig_node->last_bcast_seqno, 1 ))
+							orig_node->last_bcast_seqno= ntohs( ((struct bcast_packet *)packet_buff)->seqno );
 
 						/* broadcast for me */
 						tap_write( tap_sock, packet_buff + sizeof(struct bcast_packet), *pay_buff_len - sizeof(struct bcast_packet) );
@@ -1761,8 +1762,9 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 							batman_if = list_entry(if_pos, struct batman_if, list);
 
 							memcpy( ether_header.ether_shost, batman_if->hw_addr, ETH_ALEN );
-
-							if ( rawsock_write( orig_node->batman_if->raw_sock, &ether_header, packet_buff, *pay_buff_len ) < 0 ) {
+							/* TODO: always rebroadcasting on orig_node->batman_if? that seems wrong ... should be rebroadcastet on every interface! */
+//							if ( rawsock_write( orig_node->batman_if->raw_sock, &ether_header, packet_buff, *pay_buff_len ) < 0 ) { 
+							if ( rawsock_write( batman_if->raw_sock, &ether_header, packet_buff, *pay_buff_len ) < 0 ) {
 
 								debug_output( 0, "Error - can't send rebroadcast data through raw socket: %s\n", strerror(errno) );
 								return -1;

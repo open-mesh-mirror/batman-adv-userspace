@@ -103,6 +103,7 @@ uint8_t found_ifs = 0;
 int32_t receive_max_sock = 0;
 fd_set receive_wait_set;
 int32_t tap_sock = 0;
+int32_t tap_mtu = 2000;
 
 unsigned char broadcastAddr[] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 

@@ -176,7 +176,12 @@ void hna_update()
 			memcpy(&hna_buff[6*cnt_hna], elem->mac, 6);
 			cnt_hna++;
 		}
-//		hna_changed = 0;
+		hna_changed = 0;
+
+		/* only announce as many hosts as possible in the batman-packet. That also
+		 * should give a limit to MAC-flooding. */
+		if (num_hna > (tap_mtu - BATMAN_MAXFRAMESIZE)/6)
+			num_hna = (tap_mtu - BATMAN_MAXFRAMESIZE)/6;
 	}
 }
 

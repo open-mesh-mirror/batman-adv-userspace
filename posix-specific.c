@@ -520,14 +520,14 @@ void apply_init_args( int argc, char *argv[] ) {
 	struct batman_if *batman_if;
 	struct debug_level_info *debug_level_info;
 	uint8_t found_args = 1, batch_mode = 0;
-	uint16_t min_mtu = 2000, tmp_mtu;
+	uint16_t tmp_mtu;
 	int8_t res;
 
 	int32_t optchar, recv_buff_len, bytes_written;
 	char *unix_buff, *buff_ptr, *cr_ptr;
 	uint32_t vis_server = 0;
 
-
+	tap_mtu = 2000;
 	memset( &tmp_ip_holder, 0, sizeof (struct in_addr) );
 	stop = 0;
 
@@ -764,8 +764,8 @@ void apply_init_args( int argc, char *argv[] ) {
 
 			tmp_mtu = init_interface ( batman_if );
 
-			if ( tmp_mtu < min_mtu )
-				min_mtu = tmp_mtu;
+			if ( tmp_mtu < tap_mtu )
+				tap_mtu = tmp_mtu;
 
 			if ( batman_if->raw_sock > receive_max_sock )
 				receive_max_sock = batman_if->raw_sock;
@@ -786,7 +786,7 @@ void apply_init_args( int argc, char *argv[] ) {
 
 		}
 
-		if ( ( tap_sock = tap_create( min_mtu ) ) < 0 ) {
+		if ( ( tap_sock = tap_create( tap_mtu ) ) < 0 ) {
 
 			restore_defaults();
 			exit(EXIT_FAILURE);

@@ -130,6 +130,7 @@ extern uint8_t found_ifs;
 extern int32_t receive_max_sock;
 extern fd_set receive_wait_set;
 extern int32_t tap_sock;
+extern int32_t tap_mtu;
 
 extern uint8_t unix_client;
 extern struct unix_client *unix_packet[256];

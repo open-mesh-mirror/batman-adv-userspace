@@ -113,27 +113,22 @@ void hna_add(unsigned char *mac, unsigned char *mymac)
 	debug_output(0, "HNA: hna_add(%s) \n", addr_to_string(mac) );
 	if (elem != NULL) {
 		if (is_my_mac(elem->batman_mac)) {
-			debug_output(0, "HNA: hna_add(%s) old, updating age.\n", addr_to_string(mac) );
 			elem->age = curr_time;
 			return;
 		} else {		/* this host moved to my place. */
-			debug_output(0, "HNA: hna_add(%s) now at my host.\n", addr_to_string(mac) );
 			hna_del(elem);
 			elem = NULL;
 		}
 	}
 	if (elem == NULL) { /* not found or deleted */
-		debug_output(0, "HNA: hna_add(%s) - it's new!!\n", addr_to_string(mac) );
 		transtable_add( mac, mymac);
 		elem = hash_find(trans_hash, mac);	
 		if (elem != NULL) {
-			debug_output(0, "HNA: hna_add(%s) - adding to table!!\n", addr_to_string(mac) );
 			elem->age = curr_time;
 			dlist_add(&elem->list_link, &hna_list);
 			hna_changed = 1;
 
 		} else {
-			debug_output(0, "HNA: hna_add(%s) - something went wrong :/\n", addr_to_string(mac) );
 			/* something went wrong. Maybe it got into the broadcast
 			 * checker or something. */
 			return;
@@ -158,13 +153,11 @@ void hna_update()
 	
 	debug_output(0, "HNA: hna_update() (curr_time = %d)\n", curr_time);
 	dlist_for_each_entry_safe(elem, tmp, &hna_list, list_link) {
-		debug_output(0, "HNA: %d: age is %d\n", cnt_hna, elem->age);
 		if ((curr_time - elem->age) > AGE_THRESHOLD) 
 			hna_del(elem);
 		else 
 			cnt_hna++; 
 	}
-	debug_output(0, "HNA: counted %d\n", cnt_hna);
 	if (hna_changed == 1) {
 		/* rewrite the HNA-buffer */
 		num_hna = cnt_hna;

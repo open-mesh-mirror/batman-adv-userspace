@@ -39,7 +39,6 @@
 
 #include "os.h"
 #include "batman-adv.h"
-#include "list.h"
 #include "allocate.h"
 
 

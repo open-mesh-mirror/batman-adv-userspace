@@ -103,11 +103,11 @@ uint8_t found_ifs = 0;
 int32_t receive_max_sock = 0;
 fd_set receive_wait_set;
 int32_t tap_sock = 0;
-uint8_t my_hw_addr[6];
 
 unsigned char broadcastAddr[] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
 uint8_t unix_client = 0;
+
 
 struct unix_client *unix_packet[256];
 
@@ -122,6 +122,7 @@ struct list_head_first if_list;
 struct unix_if unix_if;
 struct debug_clients debug_clients;
 
+uint32_t curr_time = 0;
 
 
 void usage( void ) {
@@ -293,10 +294,12 @@ void verbose_usage( void ) {
 // 	}
 //
 // }
+//
 
 
 
-void update_routes( struct orig_node *orig_node, struct neigh_node *neigh_node ) {
+void update_routes( struct orig_node *orig_node, struct neigh_node *neigh_node, unsigned char *hna_recv_buff, int16_t hna_buff_len ) 
+{
 
 	debug_output( 4, "update_routes() \n" );
 
@@ -337,8 +340,36 @@ void update_routes( struct orig_node *orig_node, struct neigh_node *neigh_node )
 
 		orig_node->router = neigh_node;
 
-	}
+		if ((hna_recv_buff == NULL) && (orig_node->hna_buff == NULL)) {
+			/* great, nothing to do. */
+		} else if ((hna_recv_buff != NULL) && (orig_node->hna_buff == NULL)) {
+			orig_node->hna_buff = debugMalloc( hna_buff_len, 102 );
+			orig_node->hna_buff_len = hna_buff_len;
+			memcpy( orig_node->hna_buff, hna_recv_buff, hna_buff_len );
 
+			hna_add_buff(orig_node); /* only things to add */
+		} else if ((hna_recv_buff == NULL) && (orig_node->hna_buff != NULL)) {
+			hna_del_buff(orig_node); /* only things to delete */
+
+		} else {
+			int changed=0;
+
+			if (hna_buff_len != orig_node->hna_buff_len)	
+				changed=1;
+			else if(memcmp(hna_recv_buff, orig_node->hna_buff, hna_buff_len) == 0)
+				changed=1;
+			if (changed) {
+				/* need to update table */
+				hna_del_buff(orig_node); 
+				orig_node->hna_buff = debugMalloc( hna_buff_len, 102 );
+				orig_node->hna_buff_len = hna_buff_len;
+
+				memcpy( orig_node->hna_buff, hna_recv_buff, hna_buff_len );
+
+				hna_add_buff(orig_node); 
+			}
+		}
+	}
 }
 
 
@@ -436,7 +467,7 @@ int isBidirectionalNeigh( struct orig_node *orig_neigh_node, struct batman_if *i
 
 
 
-int isMyMac( uint8_t *addr ) {
+int is_my_mac( uint8_t *addr ) {
 
 	struct list_head *if_pos;
 	struct batman_if *batman_if;
@@ -495,9 +526,11 @@ int8_t batman() {
 	struct batman_if *batman_if, *if_incoming;
 	struct neigh_node *neigh_node;
 	struct forw_node *forw_node;
-	uint32_t debug_timeout, select_timeout, curr_time;
+	uint32_t debug_timeout, select_timeout;
 	unsigned char in[2000];
 	int16_t in_len;
+	int16_t in_hna_len;
+	uint8_t *in_hna_buff;
 	uint8_t neigh[6], is_my_addr, is_my_orig, is_broadcast, is_duplicate, is_bidirectional, is_bntog, forward_duplicate_packet, has_unidirectional_flag, has_directlink_flag, has_version;
 	int8_t res;
 
@@ -549,6 +582,10 @@ int8_t batman() {
 			has_unidirectional_flag = ((struct batman_packet *)&in)->flags & UNIDIRECTIONAL ? 1 : 0;
 			has_directlink_flag = ((struct batman_packet *)&in)->flags & DIRECTLINK ? 1 : 0;
 			has_version = ((struct batman_packet *)&in)->version;
+
+			in_hna_buff = in + sizeof(struct batman_packet);
+			in_hna_len = in_len - sizeof(struct batman_packet);
+
 
 			debug_output( 4, "Received BATMAN packet via NB: %s ,IF: %s %s (from OG: %s, seqno %d, TTL %d, V %d, UDF %d, IDF %d) \n", 
 					addr_to_string( neigh ), 
@@ -641,7 +678,7 @@ int8_t batman() {
 
 					/* update ranking */
 					if ( ( is_bidirectional ) && ( !is_duplicate ) )
-						update_orig( orig_node, (struct batman_packet *)&in, neigh, if_incoming, curr_time );
+						update_orig( orig_node, (struct batman_packet *)&in, neigh, if_incoming, in_hna_buff, in_hna_len, curr_time );	
 
 					is_bntog = isBntog( neigh, orig_node );
 
@@ -721,26 +758,20 @@ int8_t batman() {
 							debug_output( 4, "Drop packet: received via bidirectional link: %s, BNTOG: %s !\n", ( is_bidirectional ? "YES" : "NO" ), ( is_bntog ? "YES" : "NO" ) );
 
 						}
-
 					}
-
 				}
-
 			}
-
 		}
 
 
+		hna_update(curr_time);
 		send_outstanding_packets();
 
-		if ( debug_timeout + 1000 < curr_time ) {
+		if (debug_timeout+1000 < curr_time) {
 
 			debug_timeout = curr_time;
-
-			purge_orig( curr_time );
-
+			purge_orig(curr_time);
 			debug_orig();
-
 			checkIntegrity();
 
 // 			if ( ( routing_class != 0 ) && ( curr_gateway == NULL ) )

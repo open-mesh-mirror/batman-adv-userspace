@@ -18,11 +18,11 @@
 
 
 CC =			gcc
-CFLAGS =		-Wall -O1 -g3
+CFLAGS =		-Wall -W -O1 -g3
 STRIP=			strip
 LDFLAGS =		-lpthread
 
-CFLAGS_MIPS =	-Wall -O1 -g3
+CFLAGS_MIPS =	-Wall -W -O1 -g3
 LDFLAGS_MIPS =	-lpthread
 
 UNAME=		$(shell uname)

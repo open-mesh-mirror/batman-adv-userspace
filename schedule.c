@@ -38,11 +38,13 @@ void schedule_own_packet( struct batman_if *batman_if ) {
 
 	forw_node_new->if_outgoing = batman_if;
 	forw_node_new->own = 1;
-	forw_node_new->send_time = get_time() + originator_interval - JITTER + rand_num( 2 * JITTER );
+	forw_node_new->send_time = get_time() + originator_interval - JITTER + rand_num(2*JITTER);
 
-	forw_node_new->pack_buff = debugMalloc( sizeof(struct batman_packet), 502 );
-	memcpy( forw_node_new->pack_buff, &batman_if->out, sizeof(struct batman_packet) );
-	forw_node_new->pack_buff_len = sizeof(struct batman_packet);
+	forw_node_new->pack_buff_len = sizeof(struct batman_packet)+num_hna*6;
+	forw_node_new->pack_buff = debugMalloc(forw_node_new->pack_buff_len, 502);
+	memcpy(forw_node_new->pack_buff, &batman_if->out, sizeof(struct batman_packet));
+	if (num_hna > 0)
+		memcpy(forw_node_new->pack_buff+sizeof(struct batman_packet), hna_buff, num_hna*6); 
 
 	prev_list_head = (struct list_head *)&forw_list;
 

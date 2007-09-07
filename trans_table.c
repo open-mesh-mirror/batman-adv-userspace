@@ -114,7 +114,7 @@ void hna_add(unsigned char *mac, unsigned char *mymac)
 	struct trans_element_t *elem;
 	elem = hash_find(trans_hash, mac);
 
-	debug_output(0, "HNA: hna_add(%s) \n", addr_to_string(mac) );
+/*	debug_output(4, "HNA: hna_add(%s) \n", addr_to_string(mac) );*/
 	if (elem != NULL) {
 		if (is_my_mac(elem->batman_mac)) {
 			elem->age = curr_time;
@@ -169,7 +169,7 @@ void hna_update()
 		debug_output(4, "HNA: Local HNA changed: (%d hnas counted)", cnt_hna );
 		cnt_hna = 0;
 		dlist_for_each_entry(elem, &hna_list, list_link) {
-			debug_output(0, "%d: %s  \n", cnt_hna, addr_to_string(elem->mac));
+			debug_output(4, "%d: %s  \n", cnt_hna, addr_to_string(elem->mac));
 			memcpy(&hna_buff[6*cnt_hna], elem->mac, 6);
 			cnt_hna++;
 		}

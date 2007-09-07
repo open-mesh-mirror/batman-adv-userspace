@@ -107,8 +107,8 @@
 
 #define NUM_WORDS ((int)( SEQ_RANGE / WORD_BIT_SIZE ))
 
-#define AGE_THRESHOLD		120000
-			/* purge from local hna list after 120 seconds. */
+#define AGE_THRESHOLD		300000
+			/* purge from local hna list after 5 minutes. */
 
 
 extern unsigned char broadcastAddr[];

@@ -88,11 +88,15 @@ unsigned char *transtable_search(unsigned char *mac) {
 
 	elem= hash_find(trans_hash, mac);
 	if ( elem != NULL)	{
-/*		debug_output( 4, "Found MAC %s at %s\n",	addr_to_string(elem->mac), addr_to_string(elem->batman_mac)); */
+/*		debug_output( 4, "HNA: transtable_search Found MAC %s at ",	addr_to_string(elem->mac)); 
+		debug_output( 4, "HNA: at %s\n",							addr_to_string(elem->batman_mac)); */
+
 		return(elem->batman_mac);
 	}
-	else 					
+	else {					
+/*		debug_output( 4, "HNA: transtable_search COULD NOT FIND MAC %s at ",	addr_to_string(mac)); */
 		return(NULL);
+	}
 }
 /* delete an host from the table */
 void hna_del(struct trans_element_t *elem) 
@@ -151,7 +155,7 @@ void hna_update()
 	struct trans_element_t *elem, *tmp;
 	int cnt_hna = 0;
 	
-	debug_output(0, "HNA: hna_update() (curr_time = %d)\n", curr_time);
+/*	debug_output(4, "HNA: hna_update() (curr_time = %d)", curr_time);*/
 	dlist_for_each_entry_safe(elem, tmp, &hna_list, list_link) {
 		if ((curr_time - elem->age) > AGE_THRESHOLD) 
 			hna_del(elem);
@@ -162,7 +166,7 @@ void hna_update()
 		/* rewrite the HNA-buffer */
 		num_hna = cnt_hna;
 		hna_buff = debugRealloc(hna_buff, num_hna*6, 601);
-		debug_output(0, "HNA: Local HNA changed: (%d hnas counted) \n", cnt_hna );
+		debug_output(4, "HNA: Local HNA changed: (%d hnas counted)", cnt_hna );
 		cnt_hna = 0;
 		dlist_for_each_entry(elem, &hna_list, list_link) {
 			debug_output(0, "%d: %s  \n", cnt_hna, addr_to_string(elem->mac));

@@ -338,37 +338,38 @@ void update_routes( struct orig_node *orig_node, struct neigh_node *neigh_node, 
 			orig_node->router = neigh_node;
 
 		}
-
 		orig_node->router = neigh_node;
 
-		if ((hna_recv_buff == NULL) && (orig_node->hna_buff == NULL)) {
-			/* great, nothing to do. */
-		} else if ((hna_recv_buff != NULL) && (orig_node->hna_buff == NULL)) {
+	}
+
+
+	if ((hna_recv_buff == NULL) && (orig_node->hna_buff == NULL)) {
+		/* great, nothing to do. */
+	} else if ((hna_recv_buff != NULL) && (orig_node->hna_buff == NULL)) {
+		orig_node->hna_buff = debugMalloc( hna_buff_len, 102 );
+		orig_node->hna_buff_len = hna_buff_len;
+		memcpy( orig_node->hna_buff, hna_recv_buff, hna_buff_len );
+
+		hna_add_buff(orig_node); /* only things to add */
+	} else if ((hna_recv_buff == NULL) && (orig_node->hna_buff != NULL)) {
+		hna_del_buff(orig_node); /* only things to delete */
+
+	} else {
+		int changed=0;
+
+		if (hna_buff_len != orig_node->hna_buff_len)	
+			changed=1;
+		else if(memcmp(hna_recv_buff, orig_node->hna_buff, hna_buff_len) == 0)
+			changed=1;
+		if (changed) {
+			/* need to update table */
+			hna_del_buff(orig_node); 
 			orig_node->hna_buff = debugMalloc( hna_buff_len, 102 );
 			orig_node->hna_buff_len = hna_buff_len;
+
 			memcpy( orig_node->hna_buff, hna_recv_buff, hna_buff_len );
 
-			hna_add_buff(orig_node); /* only things to add */
-		} else if ((hna_recv_buff == NULL) && (orig_node->hna_buff != NULL)) {
-			hna_del_buff(orig_node); /* only things to delete */
-
-		} else {
-			int changed=0;
-
-			if (hna_buff_len != orig_node->hna_buff_len)	
-				changed=1;
-			else if(memcmp(hna_recv_buff, orig_node->hna_buff, hna_buff_len) == 0)
-				changed=1;
-			if (changed) {
-				/* need to update table */
-				hna_del_buff(orig_node); 
-				orig_node->hna_buff = debugMalloc( hna_buff_len, 102 );
-				orig_node->hna_buff_len = hna_buff_len;
-
-				memcpy( orig_node->hna_buff, hna_recv_buff, hna_buff_len );
-
-				hna_add_buff(orig_node); 
-			}
+			hna_add_buff(orig_node); 
 		}
 	}
 }

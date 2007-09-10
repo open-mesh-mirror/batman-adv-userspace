@@ -1831,7 +1831,8 @@ int8_t send_packet( unsigned char *packet_buff, int16_t packet_buff_len, uint8_t
 //	debug_output( 4, "recv addr %s,", addr_to_string( recv_addr ) );
 //	debug_output( 4, "%02x %02x %02x %02x %02x \n", packet_buff[0], packet_buff[1], packet_buff[2], packet_buff[3], packet_buff[4] );
 
-	for (i=0; i< PACKETS_PER_CYCLE; i++)
+	/* Try sending PACKETS_PER_CYCLE times to send the packet, and drop it otherwise. */
+	for (i=0; i< PACKETS_PER_CYCLE; i++) {
 		if ( rawsock_write( send_sock, &ether_header, packet_buff, packet_buff_len ) < 0 ) {
 			if (e == EAGAIN || e == ESPIPE){
 				debug_output( 4, "send packet failed, but we retry\n" );

@@ -128,23 +128,21 @@ int32_t rawsock_write(int32_t rawsock, struct ether_header *send_header, unsigne
 	vector[1].iov_len  = size;
 
 	send_header->ether_type = htons(ETH_P_BATMAN);
-	/*
-	if (buf[0] != BAT_PACKET) {
+/*	if (buf[0] != BAT_PACKET) {
 
-	printf("[B]batman source = %s, ", ether_ntoa((struct ether_addr *)send_header->ether_shost) );
-	printf("dest   = %s, ", ether_ntoa((struct ether_addr *)send_header->ether_dhost));
-	printf("type: %08x, len %i, battype %d\n",ntohs(send_header->ether_type), size, buf[0]);
+	debug_output(4, "[B]batman source = %s, ", ether_ntoa((struct ether_addr *)send_header->ether_shost) );
+	debug_output(4, "dest   = %s, ", ether_ntoa((struct ether_addr *)send_header->ether_dhost));
+	debug_output(4, "type: %08x, len %i, battype %d\n",ntohs(send_header->ether_type), size, buf[0]);
 	if ( buf[0] == BAT_UNICAST) {
-		printf("[E]ther source = %s ", 	ether_ntoa((struct ether_addr *)((struct ether_header *)(buf + sizeof(struct unicast_packet)))->ether_shost));
-		printf("dest   = %s ", 			ether_ntoa((struct ether_addr *)((struct ether_header *)(buf + sizeof(struct unicast_packet)))->ether_dhost));
-		printf("type   = %04x", 			((struct ether_header *)(buf + sizeof(struct unicast_packet)))->ether_type);
-
+		debug_output(4, "[E]ther source = %s ", 	ether_ntoa((struct ether_addr *)((struct ether_header *)(buf + sizeof(struct unicast_packet)))->ether_shost));
+		debug_output(4, "dest   = %s ", 			ether_ntoa((struct ether_addr *)((struct ether_header *)(buf + sizeof(struct unicast_packet)))->ether_dhost));
+		debug_output(4, "type   = %04x", 			((struct ether_header *)(buf + sizeof(struct unicast_packet)))->ether_type);
 	}
 	if ( buf[0] == BAT_BCAST) {
-		printf("[E]ther source = %s ", ether_ntoa((struct ether_addr *)((struct ether_header *)(buf + sizeof(struct bcast_packet)))->ether_shost));
-		printf("dest   = %s ", ether_ntoa((struct ether_addr *)((struct ether_header *)(buf + sizeof(struct bcast_packet)))->ether_dhost));
-		printf("type   = %04x ", ((struct ether_header *)(buf + sizeof(struct bcast_packet)))->ether_type);
-		printf("seqno =  %d\n", ntohs(((struct bcast_packet *)buf)->seqno) );
+		debug_output(4, "[E]ther source = %s ", ether_ntoa((struct ether_addr *)((struct ether_header *)(buf + sizeof(struct bcast_packet)))->ether_shost));
+		debug_output(4, "dest   = %s ", ether_ntoa((struct ether_addr *)((struct ether_header *)(buf + sizeof(struct bcast_packet)))->ether_dhost));
+		debug_output(4, "type   = %04x ", ((struct ether_header *)(buf + sizeof(struct bcast_packet)))->ether_type);
+		debug_output(4, "seqno =  %d\n", ntohs(((struct bcast_packet *)buf)->seqno) );
 	}
 	}
 	printf("\n");*/

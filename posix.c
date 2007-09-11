@@ -101,6 +101,21 @@ void sym_print( char x, char y, char *z ) {
 
 }
 
+int8_t send_udp_packet( unsigned char *packet_buff, int32_t packet_buff_len, struct sockaddr_in *broad, int32_t send_sock ) 
+{
+
+	if ( sendto( send_sock, packet_buff, packet_buff_len, 0, (struct sockaddr *)broad, sizeof(struct sockaddr_in) ) < 0 ) {
+		if ( errno == 1 ) {
+			debug_output( 0, "Error - can't send udp packet: %s.\nDoes your firewall allow outgoing packets on port %i ?\n", strerror(errno), ntohs( broad->sin_port ) );
+		} else {
+			debug_output( 0, "Error - can't send udp packet: %s.\n", strerror(errno) );
+		}
+		return -1;
+	}
+	return 0;
+}
+
+
 
 
 void bat_wait( int32_t T, int32_t t ) {

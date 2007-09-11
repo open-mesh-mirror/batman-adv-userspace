@@ -34,6 +34,7 @@
 #include "allocate.h"
 #include "packet.h"
 #include "dlist.h"
+#include "vis-types.h"
 
 
 #define SOURCE_VERSION "0.1-alpha"  //put exactly one distinct word inside the string like "0.3-pre-alpha" or "0.3-rc1" or "0.3"
@@ -41,6 +42,8 @@
 #define UNIDIRECTIONAL 0x80
 #define DIRECTLINK 0x40
 #define ADDR_STR_LEN 16
+#define VIS_COMPAT_VERSION (128 | 20)
+#define VIS_PORT 4307
 
 #define UNIX_PATH "/var/run/batmand-adv.socket"
 
@@ -220,10 +223,10 @@ struct batman_if
 // 	struct sockaddr_in addr;
 // };
 
-// struct vis_if {
-// 	int32_t sock;
-// 	struct sockaddr_in addr;
-// };
+struct vis_if {
+	int32_t sock;
+ 	struct sockaddr_in addr;
+};
 
 struct unix_if {
 	int32_t unix_sock;

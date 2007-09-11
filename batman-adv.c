@@ -119,11 +119,13 @@ struct list_head_first forw_list;
 struct list_head_first gw_list;
 struct list_head_first if_list;
 
-// struct vis_if vis_if;
+struct vis_if vis_if;
 struct unix_if unix_if;
 struct debug_clients debug_clients;
 
 uint32_t curr_time = 0;
+unsigned char *vis_packet = NULL;
+uint16_t vis_packet_size = 0;
 
 
 void usage( void ) {
@@ -489,37 +491,121 @@ int is_my_mac( uint8_t *addr ) {
 }
 
 
+void generate_vis_packet() {
 
-// void send_vis_packet()
-// {
-// 	struct list_head *pos;
-// 	struct orig_node *orig_node;
-// 	unsigned char *packet=NULL;
-//
-// 	int step = 5, size=0,cnt=0;
-//
-// 	list_for_each(pos, &orig_list) {
-// 		orig_node = list_entry(pos, struct orig_node, list);
-// 		if ( ( orig_node->router != NULL ) && ( orig_node->orig == orig_node->router->addr ) )
-// 		{
-// 			if(cnt >= size)
-// 			{
-// 				size += step;
-// 				packet = debugRealloc(packet, size * sizeof(unsigned char), 14);
-// 			}
-// 			memmove(&packet[cnt], (unsigned char*)&orig_node->orig,4);
-// 			 *(packet + cnt + 4) = (unsigned char) orig_node->router->packet_count;
-// 			cnt += step;
-// 		}
-// 	}
-// 	if(packet != NULL)
-// 	{
-// 		send_packet(packet, size * sizeof(unsigned char), &vis_if.addr, vis_if.sock);
-// 	 	debugFree( packet, 111 );
-// 	}
-// }
+	struct hash_it_t *hashit = NULL;
+	struct orig_node *orig_node;
+	struct vis_data *vis_data;
+	struct list_head *list_pos;
+	struct batman_if *batman_if;
+	int i;
 
 
+	if ( vis_packet != NULL ) {
+
+		debugFree( vis_packet, 1102 );
+		vis_packet = NULL;
+		vis_packet_size = 0;
+
+	}
+
+	vis_packet_size = sizeof(struct vis_packet);
+	vis_packet = debugMalloc( vis_packet_size, 104 );
+
+	memcpy( ((struct vis_packet *)vis_packet)->sender_mac, (unsigned char *)&(((struct batman_if *)if_list.next)->hw_addr), 6 );
+
+	((struct vis_packet *)vis_packet)->version = VIS_COMPAT_VERSION;
+	((struct vis_packet *)vis_packet)->gw_class = gateway_class;
+	((struct vis_packet *)vis_packet)->seq_range = SEQ_RANGE;
+
+	/* neighbor list */
+	while ( NULL != ( hashit = hash_iterate( orig_hash, hashit ) ) ) {
+
+		orig_node = hashit->bucket->data;
+
+		/* we interested in 1 hop neighbours only */
+		if ( ( orig_node->router != NULL ) && ( orig_node->orig == orig_node->router->addr ) && ( orig_node->router->packet_count > 0 ) ) {
+
+			vis_packet_size += sizeof(struct vis_data);
+
+			vis_packet = debugRealloc( vis_packet, vis_packet_size, 105 );
+
+			vis_data = (struct vis_data *)(vis_packet + vis_packet_size - sizeof(struct vis_data));
+
+			memcpy( vis_data->mac, (unsigned char *)&orig_node->orig, 6 );
+
+			vis_data->data = orig_node->router->packet_count;
+			vis_data->type = DATA_TYPE_NEIGH;
+
+		}
+
+	}
+
+	/* secondary interfaces */
+	if ( found_ifs > 1 ) {
+
+		list_for_each( list_pos, &if_list ) {
+
+			batman_if = list_entry( list_pos, struct batman_if, list );
+
+			if ( ((struct vis_packet *)vis_packet)->sender_mac == batman_if->hw_addr )
+				continue;
+
+			vis_packet_size += sizeof(struct vis_data);
+
+			vis_packet = debugRealloc( vis_packet, vis_packet_size, 106 );
+
+			vis_data = (struct vis_data *)(vis_packet + vis_packet_size - sizeof(struct vis_data));
+
+			memcpy( vis_data->mac, (unsigned char *)&batman_if->hw_addr, 6 );
+
+			vis_data->data = 0;
+			vis_data->type = DATA_TYPE_SEC_IF;
+
+		}
+
+	}
+
+	/* hna announcements */
+	if ( num_hna > 0 ) {
+
+		vis_packet_size += sizeof(struct vis_data)* num_hna;
+
+		vis_packet = debugRealloc( vis_packet, vis_packet_size, 107 );
+
+		for (i = 0 ; i < (int)num_hna; i++) {
+
+			vis_data = (struct vis_data *)(vis_packet + vis_packet_size - (num_hna-i) * sizeof(struct vis_data));
+
+			memcpy( vis_data->mac, &hna_buff[6*i], 6 );
+
+			vis_data->data = 0;	/* batman advanced does not use a netmask */
+			vis_data->type = DATA_TYPE_HNA;
+		}
+
+	}
+
+
+	if ( vis_packet_size == sizeof(struct vis_packet) ) {
+
+		debugFree( vis_packet, 1107 );
+		vis_packet = NULL;
+		vis_packet_size = 0;
+
+	}
+
+}
+
+
+
+void send_vis_packet() {
+
+	generate_vis_packet();
+
+	if ( vis_packet != NULL )
+		send_udp_packet( vis_packet, vis_packet_size, &vis_if.addr, vis_if.sock );
+
+}
 
 int8_t batman() {
 
@@ -779,8 +865,8 @@ int8_t batman() {
 // 			if ( ( routing_class != 0 ) && ( curr_gateway == NULL ) )
 // 				choose_gw();
 
-// 			if ( vis_if.sock )
-// 				send_vis_packet();
+ 			if ( vis_if.sock )
+ 				send_vis_packet();
 
 		}
 

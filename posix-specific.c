@@ -798,17 +798,22 @@ void apply_init_args( int argc, char *argv[] ) {
 
 		FD_SET( tap_sock, &receive_wait_set );
 
-// 		if(vis_server)
-// 		{
-// 			memset(&vis_if.addr, 0, sizeof(vis_if.addr));
-// 			vis_if.addr.sin_family = AF_INET;
-// 			vis_if.addr.sin_port = htons(1967);
-// 			vis_if.addr.sin_addr.s_addr = vis_server;
-// 			/*vis_if.sock = socket( PF_INET, SOCK_DGRAM, 0);*/
-// 			vis_if.sock = ((struct batman_if *)if_list.next)->udp_send_sock;
-// 		} else {
-// 			memset(&vis_if, 0, sizeof(vis_if));
-// 		}
+ 		if (vis_server)
+ 		{
+ 			memset(&vis_if.addr, 0, sizeof(vis_if.addr));
+ 			vis_if.addr.sin_family = AF_INET;
+ 			vis_if.addr.sin_port = htons(VIS_PORT);
+ 			vis_if.addr.sin_addr.s_addr = vis_server;
+			if ( (vis_if.sock = socket( PF_INET, SOCK_DGRAM, 0 ) ) < 0 ) {
+				printf( "Error - can't create send socket: %s", strerror(errno) );
+				restore_defaults();
+				exit(EXIT_FAILURE);
+			}
+
+/* 			vis_if.sock = ((struct batman_if *)if_list.next)->udp_send_sock;*/
+ 		} else {
+ 			memset(&vis_if, 0, sizeof(vis_if));
+ 		}
 
 
 		unlink( UNIX_PATH );
@@ -1821,7 +1826,7 @@ int8_t receive_packet( unsigned char *packet_buff, int16_t packet_buff_len, int1
 
 int8_t send_packet( unsigned char *packet_buff, int16_t packet_buff_len, uint8_t *send_addr, uint8_t *recv_addr, int32_t send_sock ) {
 
-	int i,e;
+	int i;
 	struct ether_header ether_header;
 
 	memcpy( ether_header.ether_dhost, recv_addr, ETH_ALEN );
@@ -1834,7 +1839,7 @@ int8_t send_packet( unsigned char *packet_buff, int16_t packet_buff_len, uint8_t
 	/* Try sending PACKETS_PER_CYCLE times to send the packet, and drop it otherwise. */
 	for (i=0; i< PACKETS_PER_CYCLE; i++) {
 		if ( rawsock_write( send_sock, &ether_header, packet_buff, packet_buff_len ) < 0 ) {
-			if (e == EAGAIN || e == ESPIPE){
+			if (errno == EAGAIN || errno == ESPIPE){
 				debug_output( 4, "send packet failed, but we retry\n" );
 				continue;
 			} else 

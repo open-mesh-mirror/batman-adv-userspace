@@ -1385,6 +1385,14 @@ int8_t is_broadcast_address( uint8_t *dst_addr ) {
 
 }
 
+/* check multicast range: address range 01:00:5e:00:00:00 - 01:00:5e:7f:ff:ff */
+int8_t is_multicast_address( uint8_t *dst_addr ) {
+	if ((dst_addr[0] == 0x01) && (dst_addr[1] == 0x00) && (dst_addr[2] == 0x5e) && (!(dst_addr[3] & 0x80))) 
+		return 1;
+	return 0;
+}
+
+
 
 
 int8_t receive_packet_tap(unsigned char *packet_buff, int16_t packet_buff_len, int16_t *pay_buff_len)
@@ -1421,7 +1429,7 @@ int8_t receive_packet_tap(unsigned char *packet_buff, int16_t packet_buff_len, i
 #endif
 
 			/* ethernet packet should be broadcasted */
-			if ( is_broadcast_address( dhost ) ) {
+			if (is_broadcast_address(dhost) || is_multicast_address(dhost)) {
 
 				bcast_packet = (struct bcast_packet *)(payload_ptr - sizeof(struct bcast_packet));
 

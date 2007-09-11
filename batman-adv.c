@@ -524,7 +524,7 @@ void generate_vis_packet() {
 		orig_node = hashit->bucket->data;
 
 		/* we interested in 1 hop neighbours only */
-		if ( ( orig_node->router != NULL ) && ( orig_node->orig == orig_node->router->addr ) && ( orig_node->router->packet_count > 0 ) ) {
+		if ( ( orig_node->router != NULL ) && ( memcmp(orig_node->orig, orig_node->router->addr, 6) == 0 ) && ( orig_node->router->packet_count > 0 ) ) {
 
 			vis_packet_size += sizeof(struct vis_data);
 
@@ -537,7 +537,7 @@ void generate_vis_packet() {
 			vis_data->data = orig_node->router->packet_count;
 			vis_data->type = DATA_TYPE_NEIGH;
 
-		}
+		} 
 
 	}
 
@@ -548,7 +548,7 @@ void generate_vis_packet() {
 
 			batman_if = list_entry( list_pos, struct batman_if, list );
 
-			if ( ((struct vis_packet *)vis_packet)->sender_mac == batman_if->hw_addr )
+			if ( memcmp(((struct vis_packet *)vis_packet)->sender_mac, batman_if->hw_addr, 6))
 				continue;
 
 			vis_packet_size += sizeof(struct vis_data);

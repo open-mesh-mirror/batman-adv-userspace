@@ -159,7 +159,7 @@ void hna_update()
 /*	debug_output(4, "HNA: hna_update() (curr_time = %d)", curr_time);*/
 	dlist_for_each_entry_safe(elem, tmp, &hna_list, list_link) {
 		if ((curr_time - elem->age) > AGE_THRESHOLD) {
-			debug_output(4, "HNA: hna_update: purge old mac %s.\n", elem->mac );
+			debug_output(4, "HNA: hna_update: purge old mac %s.\n", addr_to_string(elem->mac) );
 			hna_del(elem);
 		} else 
 			cnt_hna++; 

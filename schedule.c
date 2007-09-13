@@ -72,7 +72,7 @@ void schedule_own_packet( struct batman_if *batman_if ) {
 
 
 
-void schedule_forward_packet( struct batman_packet *in, uint8_t unidirectional, uint8_t directlink, struct batman_if *if_outgoing ) {
+void schedule_forward_packet( struct batman_packet *in, uint8_t unidirectional, uint8_t directlink, struct batman_if *if_outgoing, int buff_len ) {
 
 	struct forw_node *forw_node_new;
 
@@ -88,9 +88,9 @@ void schedule_forward_packet( struct batman_packet *in, uint8_t unidirectional, 
 
 		INIT_LIST_HEAD(&forw_node_new->list);
 
-		forw_node_new->pack_buff = debugMalloc( sizeof(struct batman_packet), 504 );
-		memcpy( forw_node_new->pack_buff, in, sizeof(struct batman_packet) );
-		forw_node_new->pack_buff_len = sizeof(struct batman_packet);
+		forw_node_new->pack_buff_len = buff_len;
+		forw_node_new->pack_buff = debugMalloc( forw_node_new->pack_buff_len, 504 );
+		memcpy( forw_node_new->pack_buff, in, forw_node_new->pack_buff_len );
 
 		((struct batman_packet *)forw_node_new->pack_buff)->ttl--;
 

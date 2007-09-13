@@ -777,7 +777,7 @@ int8_t batman() {
 						if ( is_bidirectional && is_bntog ) {
 
 							/* mark direct link on incoming interface */
-							schedule_forward_packet( (struct batman_packet *)&in, 0, 1, if_incoming );
+							schedule_forward_packet( (struct batman_packet *)&in, 0, 1, if_incoming, in_len );
 
 							debug_output( 4, "Forward packet: rebroadcast neighbour packet with direct link flag \n" );
 
@@ -785,7 +785,7 @@ int8_t batman() {
 						/* if a bidirectional neighbour sends us a packet - retransmit it with unidirectional flag if it is not our best link to it in order to prevent routing problems */
 						} else if ( ( is_bidirectional && !is_bntog ) || ( !is_bidirectional ) ) {
 
-							schedule_forward_packet( (struct batman_packet *)&in, 1, 1, if_incoming );
+							schedule_forward_packet( (struct batman_packet *)&in, 1, 1, if_incoming, in_len );
 
 							debug_output( 4, "Forward packet: rebroadcast neighbour packet with direct link and unidirectional flag \n" );
 
@@ -798,7 +798,7 @@ int8_t batman() {
 
 							if ( !is_duplicate ) {
 
-								schedule_forward_packet( (struct batman_packet *)&in, 0, 0, if_incoming );
+								schedule_forward_packet( (struct batman_packet *)&in, 0, 0, if_incoming, in_len );
 
 								debug_output( 4, "Forward packet: rebroadcast originator packet \n" );
 
@@ -829,7 +829,7 @@ int8_t batman() {
 								/* we are forwarding duplicate o-packets if they come via our best neighbour and ttl is valid */
 								if ( forward_duplicate_packet ) {
 
-									schedule_forward_packet( (struct batman_packet *)&in, 0, 0, if_incoming );
+									schedule_forward_packet( (struct batman_packet *)&in, 0, 0, if_incoming, in_len );
 
 									debug_output( 4, "Forward packet: duplicate packet received via best neighbour with best ttl \n" );
 

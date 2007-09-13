@@ -58,8 +58,8 @@ int transtable_add(unsigned char *mac, unsigned char *batman_mac) {
 	elem = hash_find(trans_hash, mac);	/* first check, then add saves us a malloc() in 
 										 * most of the times where no mac is to add,
 										 * so this should be faster */
-	if (elem != NULL)
-		if (memcmp(batman_mac, elem->batman_mac, 6) == 0) { 
+	if (elem != NULL) 
+		if (memcmp(batman_mac, elem->batman_mac, 6) != 0) { 
 			/* host changed to a new batman_mac. delete it and reassign. */
 			dlist_del(&elem->list_link);
 			hash_remove(trans_hash, elem);
@@ -76,7 +76,8 @@ int transtable_add(unsigned char *mac, unsigned char *batman_mac) {
 		memcpy(elem->batman_mac, batman_mac, 6);
 		elem->age= curr_time;
 		hash_add(trans_hash, elem);
-		debug_output( 4, "Added MAC %s to originator %s\n",	addr_to_string(mac), addr_to_string(batman_mac));
+		debug_output( 4, "MAC: Add %s\n",	addr_to_string(mac));
+		debug_output( 4, "MAC: to originator %s\n",	addr_to_string(batman_mac));
 		return(0);
 	} 
 	return(-1);
@@ -102,7 +103,7 @@ unsigned char *transtable_search(unsigned char *mac) {
 void hna_del(struct trans_element_t *elem) 
 {
 
-	hna_changed = 1;
+/*	debug_output(4, "HNA: hna_del(%s) \n", addr_to_string(elem->mac) ); */
 	dlist_del(&elem->list_link);
 	hash_remove(trans_hash, elem);
 	free(elem);
@@ -114,7 +115,7 @@ void hna_add(unsigned char *mac, unsigned char *mymac)
 	struct trans_element_t *elem;
 	elem = hash_find(trans_hash, mac);
 
-/*	debug_output(4, "HNA: hna_add(%s) \n", addr_to_string(mac) );*/
+	debug_output(4, "HNA: hna_add(%s) \n", addr_to_string(mac) );
 	if (elem != NULL) {
 		if (is_my_mac(elem->batman_mac)) {
 			elem->age = curr_time;
@@ -138,8 +139,8 @@ void hna_add(unsigned char *mac, unsigned char *mymac)
 			return;
 		}
 	}
-
 }
+
 /* removes all entries from a hna_list from the hash*/
 void hna_remove_list(struct dlist_head *list) {
 	struct trans_element_t *elem, *tmp;
@@ -157,19 +158,20 @@ void hna_update()
 	
 /*	debug_output(4, "HNA: hna_update() (curr_time = %d)", curr_time);*/
 	dlist_for_each_entry_safe(elem, tmp, &hna_list, list_link) {
-		if ((curr_time - elem->age) > AGE_THRESHOLD) 
+		if ((curr_time - elem->age) > AGE_THRESHOLD) {
+			debug_output(4, "HNA: hna_update: purge old mac %s.\n", elem->mac );
 			hna_del(elem);
-		else 
+		} else 
 			cnt_hna++; 
 	}
 	if (hna_changed == 1) {
 		/* rewrite the HNA-buffer */
 		num_hna = cnt_hna;
 		hna_buff = debugRealloc(hna_buff, num_hna*6, 601);
-		debug_output(4, "HNA: Local HNA changed: (%d hnas counted)", cnt_hna );
+		debug_output(4, "HNA: Local HNA changed: (%d hnas counted)\n", cnt_hna );
 		cnt_hna = 0;
 		dlist_for_each_entry(elem, &hna_list, list_link) {
-			debug_output(4, "%d: %s  \n", cnt_hna, addr_to_string(elem->mac));
+			debug_output(4, "HNA: %d: %s  \n", cnt_hna, addr_to_string(elem->mac));
 			memcpy(&hna_buff[6*cnt_hna], elem->mac, 6);
 			cnt_hna++;
 		}

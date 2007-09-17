@@ -121,6 +121,7 @@ int32_t rawsock_read(int32_t rawsock, struct ether_header *recv_header, unsigned
 int32_t rawsock_write(int32_t rawsock, struct ether_header *send_header, unsigned char *buf, int16_t size) {
 	struct iovec vector[2];
 	int32_t ret;
+	int i;
 
 	vector[0].iov_base = send_header;
 	vector[0].iov_len  = sizeof(struct ether_header);
@@ -169,9 +170,20 @@ int32_t rawsock_write(int32_t rawsock, struct ether_header *send_header, unsigne
 
 	}*/
 
+	/* Try sending PACKETS_PER_CYCLE times to send the packet, and drop it otherwise. */
+	for (i=0; i< PACKETS_PER_CYCLE; i++) {
+		if ( ( ret = writev(rawsock, vector, 2) ) < 0 ) {
+			if (errno == EAGAIN || errno == ESPIPE){
+				debug_output( 4, "Error - can't write to raw socket: %s , but we retry\n", strerror(errno) );
+				continue;
+			} else {
+				debug_output( 0, "Error - can't write to raw socket: %s \n", strerror(errno) );
+				return -1;
+			}
+		} else break;
+	}
+	return 0;
 
-	if ( ( ret = writev(rawsock, vector, 2) ) < 0 )
-		debug_output( 0, "Error - can't write to raw socket: %s \n", strerror(errno) );
 
 	return(ret);
 

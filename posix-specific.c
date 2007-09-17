@@ -1850,8 +1850,10 @@ int8_t send_packet( unsigned char *packet_buff, int16_t packet_buff_len, uint8_t
 			if (errno == EAGAIN || errno == ESPIPE){
 				debug_output( 4, "send packet failed, but we retry\n" );
 				continue;
-			} else 
+			} else {
+				debug_output( 0, "send packet failed.\n" );
 				return -1;
+			}
 		} else break;
 	}
 	return 0;

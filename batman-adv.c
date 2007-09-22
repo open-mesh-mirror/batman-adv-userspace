@@ -134,12 +134,12 @@ void usage( void ) {
 	fprintf( stderr, "       -b run connection in batch mode\n" );
 	fprintf( stderr, "       -c connect via unix socket\n" );
 	fprintf( stderr, "       -d debug level\n" );
-	fprintf( stderr, "       -g gateway class\n" );
+/*	fprintf( stderr, "       -g gateway class\n" );*/
 	fprintf( stderr, "       -h this help\n" );
 	fprintf( stderr, "       -H verbose help\n" );
 	fprintf( stderr, "       -o originator interval in ms\n" );
-	fprintf( stderr, "       -p preferred gateway\n" );
-	fprintf( stderr, "       -r routing class\n" );
+/*	fprintf( stderr, "       -p preferred gateway\n" );
+	fprintf( stderr, "       -r routing class\n" );*/
 	fprintf( stderr, "       -s visualisation server\n" );
 	fprintf( stderr, "       -v print version\n" );
 
@@ -158,7 +158,7 @@ void verbose_usage( void ) {
 	fprintf( stderr, "                           2 -> list gateways\n" );
 	fprintf( stderr, "                           3 -> observe batman\n" );
 	fprintf( stderr, "                           4 -> observe batman (very verbose)\n\n" );
-	fprintf( stderr, "       -g gateway class\n" );
+/*	fprintf( stderr, "       -g gateway class\n" );
 	fprintf( stderr, "          default:         0 -> this is not an internet gateway\n" );
 	fprintf( stderr, "          allowed values:  1 -> modem line\n" );
 	fprintf( stderr, "                           2 -> ISDN line\n" );
@@ -170,18 +170,18 @@ void verbose_usage( void ) {
 	fprintf( stderr, "                           8 -> 3 MBit\n" );
 	fprintf( stderr, "                           9 -> 5 MBit\n" );
 	fprintf( stderr, "                          10 -> 6 MBit\n" );
-	fprintf( stderr, "                          11 -> >6 MBit\n\n" );
+	fprintf( stderr, "                          11 -> >6 MBit\n\n" );*/
 	fprintf( stderr, "       -h shorter help\n" );
 	fprintf( stderr, "       -H this help\n" );
 	fprintf( stderr, "       -o originator interval in ms\n" );
 	fprintf( stderr, "          default: 1000, allowed values: >0\n\n" );
-	fprintf( stderr, "       -p preferred gateway\n" );
+/*	fprintf( stderr, "       -p preferred gateway\n" );
 	fprintf( stderr, "          default: none, allowed values: IP\n\n" );
 	fprintf( stderr, "       -r routing class (only needed if gateway class = 0)\n" );
 	fprintf( stderr, "          default:         0 -> set no default route\n" );
 	fprintf( stderr, "          allowed values:  1 -> use fast internet connection\n" );
 	fprintf( stderr, "                           2 -> use stable internet connection\n" );
-	fprintf( stderr, "                           3 -> use best statistic internet connection (olsr style)\n\n" );
+	fprintf( stderr, "                           3 -> use best statistic internet connection (olsr style)\n\n" );*/
 	fprintf( stderr, "       -s visualisation server\n" );
 	fprintf( stderr, "          default: none, allowed values: IP\n\n" );
 	fprintf( stderr, "       -v print version\n" );

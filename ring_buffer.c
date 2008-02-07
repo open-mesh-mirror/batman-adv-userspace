@@ -23,22 +23,22 @@
 
 
 
-void ring_buffer_set(uint16_t tq_recv[], uint8_t *tq_index, uint16_t value)
+void ring_buffer_set(uint8_t lq_recv[], uint8_t *lq_index, uint8_t value)
 {
-	tq_recv[*tq_index] = value;
-	*tq_index = (*tq_index + 1) % global_win_size;
+	lq_recv[*lq_index] = value;
+	*lq_index = ( *lq_index + 1 ) % TQ_TOTAL_WINDOW_SIZE;
 }
 
-uint16_t ring_buffer_avg(uint16_t tq_recv[])
+uint8_t ring_buffer_avg(uint8_t lq_recv[])
 {
-	uint16_t count = 0, i = 0, *ptr;
-	uint32_t sum = 0;
+	uint8_t *ptr;
+	uint16_t count = 0, i = 0, sum = 0;
 
-	ptr = tq_recv;
+	ptr = lq_recv;
 
-	while (i < global_win_size) {
+	while ( i < TQ_TOTAL_WINDOW_SIZE ) {
 
-		if (*ptr != 0) {
+		if ( *ptr != 0 ) {
 			count++;
 			sum += *ptr;
 		}
@@ -48,8 +48,8 @@ uint16_t ring_buffer_avg(uint16_t tq_recv[])
 
 	}
 
-	if (count == 0)
+	if ( count == 0 )
 		return 0;
 
-	return (uint16_t)(sum / count);
+	return (uint8_t)(sum / count);
 }
